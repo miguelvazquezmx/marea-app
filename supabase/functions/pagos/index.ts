@@ -234,6 +234,13 @@ async function webhook(req: Request) {
   const ok = await verifyStripe(raw, req.headers.get("Stripe-Signature") || "", env("STRIPE_WEBHOOK_SECRET"));
   if (!ok) return json({ error: "firma inválida" }, 400);
   const event = JSON.parse(raw);
+  // Aviso "resumido" (thin): trae solo la referencia; se lee el objeto completo de Stripe.
+  if (!event.data?.object && event.related_object?.url) {
+    event.data = { object: await stripe("GET", String(event.related_object.url).replace(/^\/v1/, "")) };
+  }
+  if (event.type === "checkout.session.completed" && !event.data.object.subscription && event.data.object.id) {
+    event.data.object = await stripe("GET", `/checkout/sessions/${enc(event.data.object.id)}`);
+  }
   const subId = subIdOf(event);
   if (!subId) return json({ received: true, ignored: event.type });
   await syncSubscription(subId);

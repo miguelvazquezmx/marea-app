@@ -500,7 +500,8 @@ async function screenPaid() {
   view(`<div class="topbar"><span class="wordmark">${esc(S.business.name)}</span><span></span></div>
     <div class="screen center" style="padding:0"><div class="spinner" role="status" aria-label="Confirmando"></div><p class="small" style="margin-top:16px">Confirmando tu pago…</p></div>`);
   let active = false;
-  for (let i = 0; i < 12 && !active; i++) {
+  for (let i = 0; i < 20 && !active; i++) {
+    if (i === 5) { const t = q(".small"); if (t) t.textContent = "Confirmando tu pago… puede tardar unos segundos."; }
     try { await loadClientData(); } catch { /* reintenta */ }
     active = mState(S.membership).k === "active";
     if (!active) await new Promise(r => setTimeout(r, 2000));
