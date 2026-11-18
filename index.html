@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MAREA · Entrenamiento</title>
+<meta name="description" content="Tu entrenamiento con Miguel Vázquez, Master Trainer.">
+<meta name="theme-color" content="#0B1420">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MAREA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/app.css?v=1">
+</head>
+<body>
+<div class="tide" id="tide" aria-hidden="true">
+  <svg viewBox="0 0 800 16" preserveAspectRatio="none"><path d="M0 8 Q50 0 100 8 T200 8 T300 8 T400 8 T500 8 T600 8 T700 8 T800 8 V16 H0Z" fill="rgba(63,191,159,.10)"/></svg>
+</div>
+<main id="app" class="app" aria-live="polite">
+  <div class="screen center"><div class="spinner" role="status" aria-label="Cargando"></div></div>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<noscript><p style="padding:24px">Para usar MAREA necesitas activar JavaScript en tu navegador.</p></noscript>
+<script src="js/vendor/supabase-2.118.0.js"></script>
+<script type="module" src="js/app.js?v=1"></script>
+</body>
+</html>
