@@ -151,7 +151,7 @@ async function loadUser() {
 
 async function loadClientData() {
   const [ms, it] = await Promise.all([
-    sb.from("client_memberships").select("id,plan_id,status,start_date,end_date,created_at").eq("client_id", S.client.id).order("created_at", { ascending: false }),
+    sb.from("client_memberships").select("id,plan_id,status,start_date,end_date,created_at,stripe_subscription_id,cancel_at_period_end").eq("client_id", S.client.id).order("created_at", { ascending: false }),
     sb.from("intake_forms").select("id,answers,submitted_at,safety_light").eq("client_id", S.client.id).order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   S.memberships = must(ms) || [];
@@ -197,6 +197,7 @@ function router() {
   const ok = {
     planes: true,
     "plan-elegido": !!S.membership,
+    "pago-ok": !!S.membership,
     valoracion: !!S.membership,
     inicio: !!S.membership && !!S.intake,
     "mis-respuestas": !!S.intake,
@@ -207,7 +208,7 @@ function router() {
 
 const R = {
   bienvenida: screenWelcome, entrar: screenLogin, registro: screenSignup, olvide: screenForgot, confirma: screenConfirm,
-  planes: screenPlans, "plan-elegido": screenPlanChosen, valoracion: screenIntake, inicio: screenHome, "mis-respuestas": screenMyAnswers,
+  planes: screenPlans, "plan-elegido": screenPlanChosen, "pago-ok": screenPaid, valoracion: screenIntake, inicio: screenHome, "mis-respuestas": screenMyAnswers,
 };
 
 async function afterLogin(user) {
@@ -466,6 +467,60 @@ function screenPlans() {
   };
 }
 
+// ---------------------------------------------------------------------
+// Pago con tarjeta (Stripe)
+// ---------------------------------------------------------------------
+async function callPagos(body) {
+  const { data, error } = await sb.functions.invoke("pagos", { body: { ...body, return_url: APP_URL } });
+  if (error) {
+    let msg = "";
+    try { msg = (await error.context.json()).error; } catch { /* sin detalle */ }
+    throw new Error(msg || "No se pudo abrir el pago. Intenta de nuevo.");
+  }
+  if (!data?.url) throw new Error("No se pudo abrir el pago. Intenta de nuevo.");
+  location.href = data.url;
+}
+async function payWithCard(btn, errEl) {
+  if (errEl) errEl.textContent = "";
+  await busy(btn, "Abriendo pago seguro…", async () => {
+    try { await callPagos({ action: "checkout", membership_id: S.membership.id }); await new Promise(r => setTimeout(r, 4000)); }
+    catch (e) { if (errEl) errEl.textContent = e.message; else toast(e.message); }
+  });
+}
+async function openPortal(btn) {
+  await busy(btn, "Abriendo…", async () => {
+    try { await callPagos({ action: "portal" }); await new Promise(r => setTimeout(r, 4000)); }
+    catch (e) { toast(e.message); }
+  });
+}
+const cyclePhrase = p => ({ monthly: "cada mes", quarterly: "cada 3 meses", semiannual: "cada 6 meses", annual: "cada año" }[p?.billing_cycle] || "");
+
+async function screenPaid() {
+  setTide(70);
+  view(`<div class="topbar"><span class="wordmark">${esc(S.business.name)}</span><span></span></div>
+    <div class="screen center" style="padding:0"><div class="spinner" role="status" aria-label="Confirmando"></div><p class="small" style="margin-top:16px">Confirmando tu pago…</p></div>`);
+  let active = false;
+  for (let i = 0; i < 12 && !active; i++) {
+    try { await loadClientData(); } catch { /* reintenta */ }
+    active = mState(S.membership).k === "active";
+    if (!active) await new Promise(r => setTimeout(r, 2000));
+  }
+  if (!location.hash.startsWith("#/pago-ok")) return; // ya se fue a otra pantalla
+  const p = planById(S.membership?.plan_id);
+  setTide(active ? 80 : 60);
+  const root = view(`
+    <div class="topbar"><span class="wordmark">${esc(S.business.name)}</span><span></span></div>
+    <div>
+      <div class="eyebrow">${active ? "Pago recibido" : "Pago en proceso"}</div>
+      <h1 class="big">${active ? "¡Bienvenido(a)!" : "¡Gracias!"}</h1>
+      ${active ? `<div class="note"><i></i><span>Tu membresía <b>${esc(planLabel(p))}</b> está activa${S.membership.end_date ? ` y se renueva sola el ${esc(fmtDate(S.membership.end_date))}` : ""}. Te llegará tu recibo por correo.</span></div>`
+        : `<p class="lede">Tu pago se está confirmando. En unos minutos verás tu membresía activa en tu inicio.</p>`}
+    </div>
+    <div class="spacer"></div>
+    <button class="btn main block" id="next" type="button">${S.intake ? "Ir a mi inicio" : "Llenar mi valoración"}</button>`, "split");
+  q("#next", root).onclick = () => go(S.intake ? "inicio" : "valoracion");
+}
+
 function payMessage() {
   const p = planById(S.membership?.plan_id);
   return `Hola, soy ${S.client.name}. Me registré en ${S.business.name} y elegí la membresía ${planLabel(p)}${p ? ` (${money(p.price, p.currency)})` : ""}. ¿Me pasas los datos para pagar?`;
@@ -484,14 +539,19 @@ function screenPlanChosen() {
       <div class="mstat"><b>${esc(planLabel(p))}</b>${pill(st)}</div>
       ${p ? `<p class="small">${esc(money(p.price, p.currency))} · ${esc(CYCLE[p.billing_cycle] || "")}</p>` : ""}
     </div>
-    ${st.k === "pending" ? `<p class="lede">Tu coach te va a mandar los datos para pagar. En cuanto confirme tu pago, tu membresía se activa y lo verás en tu inicio.</p>` : ""}
+    ${st.k === "pending" ? (CONFIG.cardPayments
+      ? `<p class="lede">Paga con tarjeta de forma segura. Se cobra sola ${esc(cyclePhrase(p))} y puedes cancelar cuando quieras.</p>`
+      : `<p class="lede">Te contactaremos con los datos para pagar. En cuanto se confirme tu pago, tu membresía se activa y lo verás en tu inicio.</p>`) : ""}
+    <p class="err" id="err" role="alert"></p>
     <div class="spacer"></div>
     <div class="stack">
-      ${st.k === "pending" ? wa : ""}
-      <button class="btn main block" id="next" type="button">${S.intake ? "Ir a mi inicio" : "Llenar mi valoración"}</button>
+      ${st.k === "pending" && CONFIG.cardPayments ? `<button class="btn main block" id="pay" type="button">Pagar con tarjeta · ${esc(p ? money(p.price, p.currency) : "")}</button>` : ""}
+      ${st.k === "pending" && !CONFIG.cardPayments ? wa : ""}
+      <button class="btn ${st.k === "pending" && CONFIG.cardPayments ? "ghost" : "main"} block" id="next" type="button">${S.intake ? "Ir a mi inicio" : st.k === "pending" && CONFIG.cardPayments ? "Pagar después y llenar mi valoración" : "Llenar mi valoración"}</button>
       <button class="linkbtn" id="change" type="button" style="align-self:center">Cambiar de membresía</button>
     </div>`, "split");
   q("#next", root).onclick = () => go(S.intake ? "inicio" : "valoracion");
+  q("#pay", root)?.addEventListener("click", e => payWithCard(e.currentTarget, q("#err", root)));
   q("#change", root).onclick = () => go("planes");
 }
 
@@ -589,12 +649,13 @@ function membershipCardHTML(m, { coach = false } = {}) {
   if (p) rows.push(["Precio", `${money(p.price, p.currency)} · ${CYCLE[p.billing_cycle] || ""}`]);
   if (st.k === "active" || st.k === "expired") {
     if (m.start_date) rows.push(["Desde", fmtDate(m.start_date)]);
-    if (m.end_date) rows.push([st.k === "expired" ? "Venció" : "Vence", fmtDate(m.end_date)]);
+    if (m.end_date) rows.push([st.k === "expired" ? "Venció" : m.stripe_subscription_id ? (m.cancel_at_period_end ? "Termina" : "Se renueva") : "Vence", fmtDate(m.end_date)]);
+    if (m.stripe_subscription_id) rows.push(["Pago", m.cancel_at_period_end ? "Cancelado, ya no se renueva" : "Automático con tarjeta"]);
   }
   if (st.k === "pending" && m?.created_at) rows.push(["La eligió", fmtStamp(m.created_at)]);
   return `<div class="mstat"><b>${esc(planLabel(p))}</b>${pill(st)}</div>
     ${rows.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join("")}
-    ${!coach && st.k === "pending" ? `<p class="small" style="margin-top:8px">Se activa en cuanto tu coach confirme tu pago.</p>` : ""}`;
+    ${!coach && st.k === "pending" ? `<p class="small" style="margin-top:8px">Se activa en cuanto se confirme tu pago.</p>` : ""}`;
 }
 
 function screenHome() {
@@ -615,7 +676,9 @@ function screenHome() {
       <h3>Tu membresía</h3>
       ${membershipCardHTML(S.membership)}
       <div class="actions">
-        ${st.k === "pending" && wa ? `<a class="btn wa sm" href="${esc(waLink(wa, payMessage()))}" target="_blank" rel="noopener">${ICON.wa} Pedir datos de pago</a>` : ""}
+        ${st.k === "pending" && CONFIG.cardPayments ? `<button class="btn main sm" id="pay" type="button">Pagar con tarjeta</button>` : ""}
+        ${st.k === "pending" && wa && !CONFIG.cardPayments ? `<a class="btn wa sm" href="${esc(waLink(wa, payMessage()))}" target="_blank" rel="noopener">${ICON.wa} Pedir datos de pago</a>` : ""}
+        ${S.membership?.stripe_subscription_id && st.k === "active" ? `<button class="btn ghost sm" id="portal" type="button">Cambiar tarjeta o cancelar</button>` : ""}
         ${st.k === "pending" ? `<button class="btn ghost sm" id="change" type="button">Cambiar de membresía</button>` : ""}
         ${st.k === "expired" || st.k === "canceled" ? `<button class="btn main sm" id="renew" type="button">Renovar mi membresía</button>` : ""}
       </div>
@@ -630,6 +693,8 @@ function screenHome() {
   q("#out", root).onclick = signOut;
   q("#change", root)?.addEventListener("click", () => go("planes"));
   q("#renew", root)?.addEventListener("click", () => go("planes"));
+  q("#pay", root)?.addEventListener("click", e => payWithCard(e.currentTarget));
+  q("#portal", root)?.addEventListener("click", e => openPortal(e.currentTarget));
   q("#answers", root).onclick = () => go("mis-respuestas");
   wireInstall(root);
 }
@@ -703,7 +768,7 @@ async function screenCoachClient(id) {
   try {
     [c, ms, it, pays] = await Promise.all([
       sb.from("clients").select("id,name,email,phone,created_at").eq("id", id).maybeSingle().then(must),
-      sb.from("client_memberships").select("id,client_id,plan_id,status,start_date,end_date,created_at").eq("client_id", id).order("created_at", { ascending: false }).then(must),
+      sb.from("client_memberships").select("id,client_id,plan_id,status,start_date,end_date,created_at,stripe_subscription_id,cancel_at_period_end").eq("client_id", id).order("created_at", { ascending: false }).then(must),
       sb.from("intake_forms").select("id,answers,submitted_at,safety_light").eq("client_id", id).order("submitted_at", { ascending: false }).limit(1).maybeSingle().then(must),
       sb.from("payments").select("id,amount,currency,method,payment_date").eq("client_id", id).order("payment_date", { ascending: false }).limit(10).then(must),
     ]);
@@ -727,7 +792,7 @@ async function screenCoachClient(id) {
       <section class="card">
         <h3>Membresía</h3>
         ${m ? membershipCardHTML(m, { coach: true }) : `<p class="small">Todavía no elige membresía.</p>`}
-        ${st.k === "pending" ? `<div class="actions"><button class="btn main" id="activate" type="button">Registrar pago y activar</button></div>` : ""}
+        ${st.k === "pending" ? `<div class="actions"><button class="btn main" id="activate" type="button">Registrar pago en efectivo o transferencia</button></div>` : ""}
       </section>
       <section class="card">
         <h3>Contacto y pagos</h3>
