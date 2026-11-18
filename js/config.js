@@ -18,7 +18,7 @@ export const CONFIG = {
 
   // Cobro automático con tarjeta (Stripe). true = aparece el botón "Pagar con tarjeta".
   // Se enciende cuando la función "pagos" ya está en Supabase.
-  cardPayments: false,
+  cardPayments: true,
 
   // Tu WhatsApp para que los clientes te avisen de su pago.
   // Formato: 52 + tus 10 dígitos, sin espacios. Ej. "529841234567". Vacío = no se muestra el botón.

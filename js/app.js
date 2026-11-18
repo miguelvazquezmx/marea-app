@@ -5,7 +5,7 @@
 // valoración inicial -> ve su inicio.
 // El coach (dueño del negocio) entra con su cuenta y ve el panel de clientes.
 // =====================================================================
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./config.js?v=3";
 import { FORM_VERSION, mountForm, analyze, answersHTML, coachSummaryHTML, LIGHT_TEXT, esc } from "./valoracion.js";
 
 const recoveringAtStart = /type=recovery/.test(location.hash);
