@@ -232,11 +232,11 @@ function screenWelcome() {
     <div class="hero">
       <span class="wordmark">${esc(B.name)}</span>
       <div class="eyebrow">Entrenamiento personalizado en línea</div>
-      <div class="coachline"><div class="dot">${esc(initials(CONFIG.coachName))}</div><div><b>${esc(CONFIG.coachName)}</b><span>${esc(CONFIG.coachTitle)} · ${esc(CONFIG.coachCity)}</span></div></div>
+      <p class="tagline">Tu programa de entrenamiento, hecho a tu medida y siempre en tu celular.</p>
       <ol class="how">
         <li><b>1</b><span><strong>Crea tu cuenta.</strong> Toma un minuto.</span></li>
-        <li><b>2</b><span><strong>Elige tu membresía.</strong> La pagas directo con tu coach.</span></li>
-        <li><b>3</b><span><strong>Llena tu valoración.</strong> Con ella armo tu programa a tu medida.</span></li>
+        <li><b>2</b><span><strong>Elige tu membresía.</strong> La que mejor va contigo.</span></li>
+        <li><b>3</b><span><strong>Llena tu valoración.</strong> Con ella armamos tu programa a tu medida.</span></li>
       </ol>
     </div>
     <div class="spacer"></div>
@@ -439,7 +439,7 @@ function screenPlans() {
     ${canBack ? topbar(S.intake ? "inicio" : "plan-elegido") : `<div class="topbar"><span class="wordmark">${esc(S.business.name)}</span><button class="iconbtn" id="out" type="button">Salir</button></div>`}
     ${S.intake ? "" : `<div class="eyebrow">Paso 2 de 3</div>`}
     <h1>${pending ? "Cambia tu membresía" : "Elige tu membresía"}</h1>
-    <p class="lede">La pagas directo con tu coach. Se activa en cuanto él confirme tu pago.</p>
+    <p class="lede">Tu membresía se activa en cuanto se confirme tu pago.</p>
     ${plans.length ? groupPlans(plans).map(g => `<div class="plan-group"><div class="gh"><h3>${esc(g.key)}</h3></div><div class="plans">${g.plans.map(p => planCard(p, pending?.plan_id === p.id)).join("")}</div></div>`).join("")
       : `<div class="empty">Tu coach todavía no publica sus membresías. Vuelve a intentar más tarde.</div>`}
     <p class="err" id="err" role="alert"></p>
@@ -468,7 +468,7 @@ function screenPlans() {
 
 function payMessage() {
   const p = planById(S.membership?.plan_id);
-  return `Hola ${firstName(CONFIG.coachName)}, soy ${S.client.name}. Me registré en ${S.business.name} y elegí la membresía ${planLabel(p)}${p ? ` (${money(p.price, p.currency)})` : ""}. ¿Me pasas los datos para pagar?`;
+  return `Hola, soy ${S.client.name}. Me registré en ${S.business.name} y elegí la membresía ${planLabel(p)}${p ? ` (${money(p.price, p.currency)})` : ""}. ¿Me pasas los datos para pagar?`;
 }
 
 function screenPlanChosen() {
@@ -604,7 +604,7 @@ function screenHome() {
   const root = view(`
     <div class="topbar"><span class="wordmark">${esc(S.business.name)}</span><button class="iconbtn" id="out" type="button">Salir</button></div>
     <div class="hello">
-      <div class="eyebrow">Tu coach · ${esc(CONFIG.coachName)}</div>
+      <div class="eyebrow">Tu entrenamiento</div>
       <h1 class="big">Hola, ${esc(firstName(S.client.name))}</h1>
     </div>
     <section class="card">
@@ -818,7 +818,7 @@ function wireInstall(root) {
 function privacyHTML() {
   const contact = CONFIG.privacyEmail ? `escribiendo a <b>${esc(CONFIG.privacyEmail)}</b>` : `escribiéndole a tu coach por WhatsApp o correo`;
   return `<div class="prose">
-    <p><b>${esc(CONFIG.coachName)}</b>, entrenador personal con domicilio en ${esc(CONFIG.coachCity)}, Quintana Roo, que opera bajo la marca <b>${esc(S.business?.name || "MAREA")}</b>, es responsable del uso y protección de tus datos personales.</p>
+    <p><b>${esc(CONFIG.legalName || S.business?.name || "MAREA")}</b>, con domicilio en ${esc(CONFIG.legalCity)}, es responsable del uso y protección de tus datos personales.</p>
     <h3>Qué datos pedimos</h3>
     <ul><li>Identificación y contacto: nombre, correo y WhatsApp.</li>
     <li>Datos de salud y hábitos (datos sensibles): condiciones médicas, medicamentos, lesiones, alimentación, sueño y actividad física.</li>

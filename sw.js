@@ -1,7 +1,7 @@
 // MAREA · service worker: permite instalar la app y abrirla aunque falle la red.
 // Siempre intenta traer la versión más nueva; si no hay internet, usa la guardada.
-const CACHE = "marea-v1";
-const SHELL = ["./", "index.html", "css/app.css?v=1", "js/app.js?v=1", "js/config.js", "js/valoracion.js", "js/vendor/supabase-2.118.0.js", "manifest.webmanifest", "icons/icon-192.png"];
+const CACHE = "marea-v2";
+const SHELL = ["./", "index.html", "css/app.css?v=2", "js/app.js?v=2", "js/config.js", "js/valoracion.js", "js/vendor/supabase-2.118.0.js", "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

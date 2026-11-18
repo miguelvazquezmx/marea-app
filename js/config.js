@@ -11,10 +11,10 @@ export const CONFIG = {
   // Tu negocio en la base de datos
   businessSlug: "marea",
 
-  // Cómo te presentas con tus clientes
-  coachName: "Miguel Vázquez",
-  coachTitle: "Master Trainer",
-  coachCity: "Playa del Carmen",
+  // La app se presenta solo como MAREA (sin nombre del coach).
+  // Responsable legal que aparece en el aviso de privacidad (la ley pide nombre y domicilio).
+  legalName: "MAREA",
+  legalCity: "Playa del Carmen, Quintana Roo",
 
   // Tu WhatsApp para que los clientes te avisen de su pago.
   // Formato: 52 + tus 10 dígitos, sin espacios. Ej. "529841234567". Vacío = no se muestra el botón.

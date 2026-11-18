@@ -1,7 +1,7 @@
 {
   "name": "MAREA · Entrenamiento",
   "short_name": "MAREA",
-  "description": "Tu entrenamiento con Miguel Vázquez, Master Trainer.",
+  "description": "Entrenamiento personalizado en línea.",
   "lang": "es-MX",
   "start_url": "./",
   "scope": "./",
